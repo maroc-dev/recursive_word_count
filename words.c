@@ -24,12 +24,31 @@ void get_words(int fd)
         {
             // printf("%d/%d/%d: '%c'\n", wordstart, pos, bufend,
             //        buf[pos]);
-            if (!isalpha(buf[pos]) && buf[pos] != '\'')
+
+            if (!isalpha(buf[pos]) && buf[pos] != '\'' && buf[pos] != '-')
             {
                 // printf("line in bytes %d to %d\n", wordstart, pos);
                 buf[pos] = '\0';
-                // use_line(arg, buf + wordstart);
-                printf(" %s ", buf + wordstart);
+
+                // handle cases where the word contains a leading hyphen
+                char *word = buf + wordstart;
+                if (word[0] == '-' && isalpha(word[1]))
+                {
+                    word++;
+                }
+
+                // handle cases where the word contains a trailing hyphen
+                if (pos > wordstart && buf[pos - 1] == '-')
+                {
+                    buf[pos - 1] = '\0';
+                }
+
+                // if the word is not just a hyphen then process it
+                if (wordstart < pos && !(pos == wordstart + 1 && buf[wordstart] == '-'))
+                {
+                    printf(" %s ", word);
+                }
+
                 wordstart = pos + 1;
             }
         }
