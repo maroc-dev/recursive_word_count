@@ -7,7 +7,81 @@
 #include <fcntl.h>
 #include <ctype.h>
 
-#define BUFSIZE 8
+#define foreach(X) for (; (X) != NULL; (X) = (X)->next)
+
+#define BUFSIZE 8 
+
+
+typedef struct word {
+    int frequency;
+    char* text;
+    struct word *next;
+} word;
+
+
+word *dictionary = NULL;
+
+void print_dic(){
+
+    word *current = dictionary;
+    
+    foreach(current){
+        printf("%s %d\n", current->text, current->frequency);   
+    }
+}
+
+char *str_copy(const char *str) {
+    size_t len = strlen(str) + 1;
+    char *copy = malloc(len);
+    if (copy) {
+        memcpy(copy, str, len);
+    }
+    return copy;
+}
+
+
+void count_word(char *str_word){
+    if (dictionary == NULL){
+
+        dictionary = malloc(sizeof(word));
+
+        if (dictionary == NULL){
+            //something went wrong
+            fprintf(stderr, "Word_dic failed to malloc\n");
+
+            exit(EXIT_FAILURE);
+        }
+
+        dictionary->frequency = 1;
+        dictionary->text = str_copy(str_word);
+
+        return;
+    }
+    word *current = dictionary;
+
+    // search for the word, if found then increase the frequency by 1. If it reaches the end then it adds the word.
+    foreach(current){
+        if (strcmp(str_word, current->text) == 0){
+            current->frequency +=1;
+            return;
+        }
+        else if(current->next == NULL){
+
+            current->next = malloc(sizeof(word));
+
+            if (current->next == NULL){
+                fprintf(stderr, "Malloc failed when attempting to add a new word\n");
+
+                exit(EXIT_FAILURE);
+            }
+            // printf("%s\n", str_word);
+
+            current->next->frequency = 1;
+            current->next->text = str_copy(str_word);
+            return;
+        }
+    }
+}
 
 void get_words(int fd)
 {
@@ -46,7 +120,8 @@ void get_words(int fd)
                 // if the word is not just a hyphen then process it
                 if (wordstart < pos && !(pos == wordstart + 1 && buf[wordstart] == '-'))
                 {
-                    printf(" %s ", word);
+                    // printf(" %s ", word);
+                    count_word(word);
                 }
 
                 wordstart = pos + 1;
@@ -81,12 +156,13 @@ void get_words(int fd)
             buf = realloc(buf, bufsize + 1);
         }
         buf[pos] = '\0';
-        // use_line(arg, buf + wordstart);
-        printf(" %s ", buf + wordstart);
+        // printf(" %s ", buf + wordstart);
+        count_word(buf+wordstart);
     }
     free(buf);
 }
 
+// TODO : Only read .txt if going through a directory. Do not read anything that begins with a "." 
 void dir_traverse(char *file)
 {
     struct stat path_stat;
@@ -154,6 +230,8 @@ int main(int argc, char **argv)
 
     for (int i = 1; i < argc; i++)
         dir_traverse(argv[i]);
+
+    print_dic();
 
     return EXIT_SUCCESS;
 }
