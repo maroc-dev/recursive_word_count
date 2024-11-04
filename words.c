@@ -12,7 +12,7 @@
 #define true 1
 #define false 0
 
-#define BUFSIZE 8 
+#define BUFSIZE 2
 #define INITIAL_CAPACITY 10
 
 typedef struct {
@@ -113,9 +113,14 @@ void get_words(int fd) {
         for (; pos < bufend; pos++) {
             // Handle hyphen cases
             if (buf[pos] == '-') {
+                // if the buffer ends and the last char is '-' we need to see if the word is valid once the buffer expands
+                if (pos == bufend - 1) {
+                    pos++;
+                    break;
+                }
+                
                 // Check if hyphen is between letters
-                if (pos > 0 && pos < bufend - 1 && 
-                    isalpha(buf[pos - 1]) && isalpha(buf[pos + 1])) {
+                if (pos > 0 && isalpha(buf[pos - 1]) && isalpha(buf[pos + 1])) {
                     // Continue processing if hyphen is in a word
                     continue;
                 }
@@ -143,11 +148,7 @@ void get_words(int fd) {
             int seglength = pos - wordstart;
             memmove(buf, buf + wordstart, seglength);
             pos = seglength;
-        } else if (pos == bufsize) {
-            // Keep the hyphen incase it is part of a word in the next buffer
-            if (pos > 0 && buf[pos-1] == '-') {
-                pos--;  // Keep the hyphen in the buffer
-            }
+        } else if (pos >= bufsize - 2) {
             bufsize *= 2;
             char *newbuf = realloc(buf, bufsize);
             if (newbuf == NULL) {
@@ -162,15 +163,6 @@ void get_words(int fd) {
     
     // Handle last word if any
     if (wordstart < pos) {
-        if (pos == bufsize) {
-            char *newbuf = realloc(buf, bufsize + 1);
-            if (newbuf == NULL) {
-                free(buf);
-                print_error("Buffer reallocation failed");
-                return;
-            }
-            buf = newbuf;
-        }
         buf[pos] = '\0';
         if (pos > wordstart) {
             count_word(buf + wordstart);
