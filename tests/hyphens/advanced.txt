@@ -1,0 +1,4 @@
+Don't-worry, be-happy!
+super-duper-long-hyphenated-word
+this-is-a-very-long-hyphenated-word-that-might-span-multiple-buffers
+foo

@@ -12,7 +12,10 @@
 #define true 1
 #define false 0
 
-#define BUFSIZE 2
+#define std_out 1
+#define std_error 2
+
+#define BUFSIZE 8
 #define INITIAL_CAPACITY 10
 
 typedef struct {
@@ -29,8 +32,8 @@ typedef struct {
 WordArrayList dictionary;
 
 void print_error(char* message) {
-    write(2, message, strlen(message));
-    write(2, "\n", 1);
+    write(std_error, message, strlen(message));
+    write(std_error, "\n", 1);
     exit(EXIT_FAILURE);
 }
 
@@ -56,13 +59,13 @@ void print_dictionary() {
         // if this ever overflows then god help you with the amount of words you are counting.
         char freq_str[20];
 
-        write(1, dictionary.words[i].text, strlen(dictionary.words[i].text));
+        write(std_out, dictionary.words[i].text, strlen(dictionary.words[i].text));
         sprintf(freq_str, " %d\n", dictionary.words[i].frequency); //converts int to str
-        write(1, freq_str, strlen(freq_str));
+        write(std_out, freq_str, strlen(freq_str));
     }
 }
 
-
+// This function is so we can copy words into the dictionary then reuse the buffer
 char *str_copy(const char *str) {
     size_t len = strlen(str) + 1;
     char *copy = malloc(len);
@@ -120,7 +123,9 @@ void get_words(int fd) {
                 }
                 
                 // Check if hyphen is between letters
-                if (pos > 0 && isalpha(buf[pos - 1]) && isalpha(buf[pos + 1])) {
+                if (pos > 0 && 
+                    (isalpha(buf[pos - 1]) || buf[pos - 1] == '\'') && 
+                    (isalpha(buf[pos + 1]) || buf[pos + 1] == '\''))  {
                     // Continue processing if hyphen is in a word
                     continue;
                 }
@@ -206,7 +211,6 @@ void dir_traverse(char *file) {
 
         if (dir == NULL) {
             print_error("opendir failed");
-            exit(EXIT_FAILURE);
         }
 
         struct dirent *entry;
