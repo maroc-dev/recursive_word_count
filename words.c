@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <errno.h>
 
 #define BUFSIZE 8 
 #define INITIAL_CAPACITY 10
@@ -28,7 +29,8 @@ void init_dictionary() {
     dictionary.capacity = INITIAL_CAPACITY;
     dictionary.words = malloc(INITIAL_CAPACITY * sizeof(Word));
     if (dictionary.words == NULL) {
-        fprintf(stderr, "Failed to allocate memory for dictionary.\n");
+        char *message = "Failed to allocate memory for dictionary.\n";
+        write(2, message, strlen(message));
         exit(EXIT_FAILURE);
     }
 }
@@ -42,9 +44,16 @@ void free_dictionary() {
 
 void print_dictionary() {
     for (size_t i = 0; i < dictionary.size; i++) {
-        printf("%s %d\n", dictionary.words[i].text, dictionary.words[i].frequency);
+        
+        // if this ever overflows then god help you with the amount of words you are counting.
+        char freq_str[20];
+
+        write(1, dictionary.words[i].text, strlen(dictionary.words[i].text));
+        sprintf(freq_str, " %d\n", dictionary.words[i].frequency); //converts int to str
+        write(1, freq_str, strlen(freq_str));
     }
 }
+
 
 char *str_copy(const char *str) {
     size_t len = strlen(str) + 1;
@@ -69,7 +78,8 @@ void count_word(char *str_word) {
         dictionary.capacity *= 2;
         dictionary.words = realloc(dictionary.words, dictionary.capacity * sizeof(Word));
         if (dictionary.words == NULL) {
-            fprintf(stderr, "Failed to reallocate memory for dictionary.\n");
+            char* message = "Failed to reallocate memory for dictionary.\n";
+            write(2, message, strlen(message));
             exit(EXIT_FAILURE);
         }
     }
@@ -130,11 +140,35 @@ void get_words(int fd) {
     free(buf);
 }
 
+char* create_path(const char* dir, const char* filename){
+    // Calculating how much space we need for the complete path, the +2 is because of the '/' and the '\0'
+    size_t path_length = strlen(dir) + strlen(filename) + 2;
+
+    char* path = malloc(path_length);
+    if (path == NULL) {
+        perror("malloc failed");
+        exit(EXIT_FAILURE);
+    }
+
+    
+    // Creating the path
+    strcpy(path, dir);         
+    strcat(path, "/");         
+    strcat(path, filename); 
+
+    return path;
+
+}
+
 void dir_traverse(char *file) {
     struct stat path_stat;
 
     if (stat(file, &path_stat) != 0) {
-        perror(file);
+        const char *error_message = strerror(errno);
+
+        // Write the error message corresponding to errno if stat has failed, we have to do this because only write() is permitted
+        write(2, error_message, strlen(error_message));
+        write(2, "\n", 1); 
         return;
     }
 
@@ -178,17 +212,40 @@ void dir_traverse(char *file) {
     close(fd);
 }
 
+int compare_words_lexicographically(Word *a, Word *b){
+    return strcmp(a->text, b->text);
+}
+
+int compare_words(const void *a, const void *b){
+    Word *word_a = (Word*) a;
+    Word *word_b = (Word*) b;
+
+    // compares by frequency first, if they are equal then compares the words lexicographically
+    if (word_a->frequency == word_b->frequency){
+        return compare_words_lexicographically(word_a, word_b);
+    }
+
+    return word_b->frequency-word_a->frequency;
+
+}
+
+
+// TODO: Fix it so errors all use write(), make a function to do this. 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <path>\n", argv[0]);
+        char* message = "Usage: ./words <path>\n";
+        write(2, message, strlen(message));
         return EXIT_FAILURE;
     }
 
     init_dictionary();
 
-    for (int i = 1; i < argc; i++) {
+    for (int  i = 1; i < argc; i++) {
         dir_traverse(argv[i]);
     }
+
+
+    qsort(dictionary.words, dictionary.size, sizeof(Word), compare_words);
 
     print_dictionary();
 
